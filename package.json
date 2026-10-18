@@ -1,0 +1,33 @@
+{
+  "name": "hackerrank-campus-crew-amrapali",
+  "version": "1.0.0",
+  "description": "Official Technology Portal & Student Coordinator Recruitment Platform for HackerRank Campus Crew at Amrapali University, Haldwani",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "node -e \"console.log('✅ Build OK');\"",
+    "test": "node -e \"console.log('✅ Configuration OK');\""
+  },
+  "keywords": [
+    "hackerrank",
+    "campus-crew",
+    "amrapali-university",
+    "hackathons",
+    "coding-contests",
+    "recruitment"
+  ],
+  "author": "Anil Pandey <ap967143@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^14.5.0",
+    "nodemailer": "^6.10.0",
+    "resend": "^6.33.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
