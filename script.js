@@ -94,6 +94,18 @@ async function handleClientScriptOfflineFallback(endpoint, options) {
     if (options && options.body) body = JSON.parse(options.body);
   } catch (e) { }
 
+  if (endpoint.includes('/api/auth/send-otp') || endpoint.includes('/api/auth/verify-otp')) {
+    return {
+      ok: false,
+      status: 503,
+      json: async () => ({
+        success: false,
+        message: 'Email verification requires the application server and a working SMTP connection. Start the server and verify your Gmail App Password.'
+      })
+    };
+  }
+
+
   if (endpoint.includes('/api/student/login')) {
     const query = body.identifier || '';
     let student = null;
@@ -1380,17 +1392,17 @@ function initRecruitmentForm() {
 
     if (btnSendOtp) {
       btnSendOtp.disabled = true;
-      btnSendOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching via Resend...';
+      btnSendOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending email...';
     }
     if (otpStatusMsg) {
-      otpStatusMsg.innerHTML = '<span style="color: #38bdf8;"><i class="fa-solid fa-paper-plane fa-fade"></i> Sending 6-digit code via Resend to inbox...</span>';
+      otpStatusMsg.innerHTML = '<span style="color: #38bdf8;"><i class="fa-solid fa-paper-plane fa-fade"></i> Sending 6-digit code to inbox...</span>';
     }
 
     try {
       const res = await apiFetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, mobile, fullName })
+        body: JSON.stringify({ email, fullName })
       });
       const data = await res.json();
 
@@ -1556,6 +1568,7 @@ function initRecruitmentForm() {
       fullName: fullNameInput.value.trim(),
       email: email,
       mobile: mobile,
+
       course: document.getElementById('course').value,
       department: document.getElementById('department').value.trim(),
       year: document.getElementById('year').value,

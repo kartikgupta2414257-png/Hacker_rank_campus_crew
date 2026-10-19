@@ -73,11 +73,11 @@ app.post('/api/auth/verify-captcha', (req, res) => {
 // Real-time Authentication & OTP Verification Endpoints
 app.post('/api/auth/send-otp', async (req, res) => {
   try {
-    const { email, mobile, fullName } = req.body;
+    const { email, fullName } = req.body;
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email address is required.' });
     }
-    const result = await otpService.sendOtp({ email, mobile, fullName });
+    const result = await otpService.sendOtp({ email, fullName });
     res.json(result);
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -407,7 +407,7 @@ app.post('/api/student/login', async (req, res) => {
   }
 });
 
-// Student Authentication & Login via Real-Time Resend OTP
+// Student Authentication & Login via Email OTP
 app.post('/api/student/send-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -432,19 +432,17 @@ app.post('/api/student/send-otp', async (req, res) => {
       });
     }
 
-    // Dispatch fresh unique OTP via Resend
+    // Dispatch a fresh unique OTP via email
     const otpResult = await otpService.sendOtp({
       email: cleanEmail,
-      mobile: student.mobile || '',
       fullName: student.fullName
     });
 
     res.json({
       success: true,
-      message: `Verification code sent via Resend to ${cleanEmail}. Please check your inbox.`,
+      message: `Verification code sent to ${cleanEmail}. Please check your inbox.`,
       email: cleanEmail,
       fullName: student.fullName,
-      debugOtp: process.env.NODE_ENV === 'production' ? undefined : otpResult.debugOtp,
       gmailUrl: otpResult.gmailUrl
     });
   } catch (err) {
@@ -736,7 +734,12 @@ app.get(['/api', '/api/health', '/api/status'], (req, res) => {
     portal: 'HackerRank Campus Crew — Amrapali University',
     ambassador: 'Anil Pandey (7900546102)',
     environment: Boolean(process.env.VERCEL || process.env.VERCEL_ENV) ? 'Vercel Serverless' : 'Node.js Local Server',
-    resendConfigured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 're_xxxxxxxxxxxxxxxxxxxxxxxx'),
+    smtpConfigured: Boolean(
+      process.env.SMTP_USER &&
+      process.env.SMTP_PASS &&
+      process.env.SMTP_USER !== 'your_email@gmail.com' &&
+      process.env.SMTP_PASS !== 'your_gmail_app_password'
+    ),
     timestamp: new Date().toISOString()
   });
 });

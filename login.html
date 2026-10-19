@@ -364,7 +364,7 @@
               </label>
               <input type="text" id="pageStudentIdentifier" class="form-control student-input"
                 placeholder="e.g. your.email@amrapali.ac.in, student@gmail.com, or APP-AU-2026-001" required>
-              <div class="form-help">Enter the email address you authenticated via Resend OTP during coordinator
+              <div class="form-help">Enter the email address you authenticated during coordinator
                 registration.</div>
             </div>
 
@@ -404,10 +404,10 @@
               </div>
             </div>
 
-            <!-- Real-Time Email OTP Authentication (Resend) -->
+            <!-- Real-Time Email OTP Authentication -->
             <button type="button" class="btn btn-secondary btn-lg" id="btnSendStudentLoginOtp"
               style="width: 100%; margin-bottom: 12px; background: #1e293b; color: #38bdf8; border: 1px solid #334155; font-weight: 600;">
-              <i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email (via Resend)
+              <i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email
             </button>
 
             <!-- OTP Input Section (Revealed when OTP is sent) -->
@@ -744,39 +744,23 @@
 
 
       if (endpoint.includes('/api/student/send-otp')) {
-        const student = await lookupStudentLocally(body.email);
         return {
-          ok: true,
+          ok: false,
+          status: 503,
           json: async () => ({
-            success: true,
-            message: `Verification code sent to ${body.email}.`,
-            email: body.email,
-            debugOtp: '123456',
-            gmailUrl: `https://mail.google.com/mail/u/${encodeURIComponent(body.email || '')}/#search/HackerRank`
+            success: false,
+            message: 'Email verification requires the application server and a working SMTP connection. Start the server and verify your Gmail App Password.'
           })
         };
       }
 
       if (endpoint.includes('/api/student/verify-otp')) {
-        const student = await lookupStudentLocally(body.email);
         return {
-          ok: true,
+          ok: false,
+          status: 503,
           json: async () => ({
-            success: true,
-            message: `Authentication successful! Welcome back.`,
-            student: student || {
-              id: "APP-AU-2026-001",
-              fullName: (body.email || 'Candidate').split('@')[0],
-              email: body.email || '',
-              course: "BCA",
-              department: "FTCA",
-              year: "2nd Year",
-              semester: "3rd Semester",
-              collegeName: "Amrapali University, Haldwani",
-              technicalSkills: ["C++", "DSA", "Web Development"],
-              status: "Pending",
-              appliedAt: new Date().toISOString()
-            }
+            success: false,
+            message: 'Email verification requires the application server. Start the server and verify your Gmail App Password.'
           })
         };
       }
@@ -931,7 +915,7 @@
         if (loginOtpFeedback) loginOtpFeedback.innerHTML = '';
         if (btnSendStudentLoginOtp) {
           btnSendStudentLoginOtp.disabled = false;
-          btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email (via Resend)';
+          btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email';
         }
         if (btnCheckStatusSubmit) {
           btnCheckStatusSubmit.disabled = false;
@@ -1090,7 +1074,7 @@
           }
           if (btnSendStudentLoginOtp) {
             btnSendStudentLoginOtp.disabled = false;
-            btnSendStudentLoginOtp.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email (via Resend)`;
+            btnSendStudentLoginOtp.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email`;
           }
         } else {
           if (btnLoginResendOtp) {
@@ -1126,7 +1110,7 @@
 
       if (btnSendStudentLoginOtp) {
         btnSendStudentLoginOtp.disabled = true;
-        btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching Resend Email OTP...';
+        btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending email OTP...';
       }
       if (btnCheckStatusSubmit) {
         btnCheckStatusSubmit.disabled = true;
@@ -1147,8 +1131,7 @@
             loginOtpInput.focus();
           }
           if (loginOtpFeedback) {
-            const hint = data.debugOtp ? `<div style="font-size: 0.85rem; color: #a3e635; margin-top: 6px;"><i class="fa-solid fa-key"></i> Test Verification Code: <strong>${data.debugOtp}</strong></div>` : '';
-            loginOtpFeedback.innerHTML = `<div style="color: #00ea64; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Verification OTP dispatched to <u>${currentAuthEmail}</u> via Resend. Check your inbox & spam folder.</div>${hint}`;
+            loginOtpFeedback.innerHTML = `<div style="color: #00ea64; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Verification OTP sent to <u>${currentAuthEmail}</u>. Check your inbox & spam folder.</div>`;
           }
           if (data.gmailUrl && loginGmailLink) {
             loginGmailLink.href = data.gmailUrl;
@@ -1159,7 +1142,7 @@
             btnCheckStatusSubmit.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Verify OTP & View Status';
           }
           startResendCountdown();
-          showToast(`6-Digit OTP code sent to ${currentAuthEmail} via Resend.`, 'success');
+          showToast(`6-Digit OTP code sent to ${currentAuthEmail}.`, 'success');
           return true;
         } else {
           showToast(data.message || 'No coordinator application found for this email.', 'error');
@@ -1168,7 +1151,7 @@
           }
           if (btnSendStudentLoginOtp) {
             btnSendStudentLoginOtp.disabled = false;
-            btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email (via Resend)';
+            btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email';
           }
           if (btnCheckStatusSubmit) {
             btnCheckStatusSubmit.disabled = false;
@@ -1181,7 +1164,7 @@
         showToast('Network error while dispatching OTP. Please try again.', 'error');
         if (btnSendStudentLoginOtp) {
           btnSendStudentLoginOtp.disabled = false;
-          btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email (via Resend)';
+          btnSendStudentLoginOtp.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Login OTP to Email';
         }
         if (btnCheckStatusSubmit) {
           btnCheckStatusSubmit.disabled = false;

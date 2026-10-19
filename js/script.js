@@ -1380,17 +1380,17 @@ function initRecruitmentForm() {
 
     if (btnSendOtp) {
       btnSendOtp.disabled = true;
-      btnSendOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching via Resend...';
+      btnSendOtp.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending email...';
     }
     if (otpStatusMsg) {
-      otpStatusMsg.innerHTML = '<span style="color: #38bdf8;"><i class="fa-solid fa-paper-plane fa-fade"></i> Sending 6-digit code via Resend to inbox...</span>';
+      otpStatusMsg.innerHTML = '<span style="color: #38bdf8;"><i class="fa-solid fa-paper-plane fa-fade"></i> Sending 6-digit code to inbox...</span>';
     }
 
     try {
       const res = await apiFetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, mobile, fullName })
+        body: JSON.stringify({ email, fullName })
       });
       const data = await res.json();
 

@@ -7,7 +7,6 @@
 
 const crypto = require('crypto');
 const emailService = require('./emailService');
-const notificationService = require('./notificationService');
 const firebaseService = require('./firebaseService');
 
 class OtpService {
@@ -43,15 +42,6 @@ class OtpService {
   }
 
   /**
-   * Validates 10-digit Indian phone number
-   */
-  isValidMobile(mobile) {
-    if (!mobile || typeof mobile !== 'string') return false;
-    const clean = mobile.replace(/\D/g, '');
-    return clean.length >= 10 && clean.length <= 12;
-  }
-
-  /**
    * Generates a guaranteed fresh, distinct 6-digit numeric OTP using true cryptography
    * Ensures the OTP is different every single time it is requested.
    */
@@ -66,17 +56,15 @@ class OtpService {
   }
 
   /**
-   * Sends real-time unique OTP to user's authentic email and mobile
-   * and synchronizes to Firebase Firestore.
+   * Sends a real-time unique OTP to the user's email and synchronizes it to Firebase.
    * @param {Object} param0 
    */
-  async sendOtp({ email, mobile, fullName }) {
+  async sendOtp({ email, fullName }) {
     if (!email || !this.isValidEmail(email)) {
       throw new Error('Please enter a valid, authentic email address (e.g., student@gmail.com or student@amrapali.ac.in).');
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanMobile = (mobile || '').trim();
     const studentName = (fullName || 'Applicant').trim();
 
     // Check existing session for previous OTP
@@ -100,7 +88,6 @@ class OtpService {
     const sessionData = {
       otp,
       email: cleanEmail,
-      mobile: cleanMobile,
       fullName: studentName,
       createdAt: now,
       expiresAt,
@@ -110,27 +97,8 @@ class OtpService {
       history
     };
 
-    // Save in memory store
-    this.otpStore.set(cleanEmail, sessionData);
-
-    console.log(`\n======================================================`);
-    console.log(`🔐 [FRESH UNIQUE REAL-TIME OTP GENERATED]`);
-    console.log(`   To Email    : ${cleanEmail}`);
-    console.log(`   To Mobile   : ${cleanMobile}`);
-    console.log(`   Candidate   : ${studentName}`);
-    console.log(`   Previous OTP: ${previousOtp || 'None'}`);
-    console.log(`   👉 NEW OTP  : [ ${otp} ] (Valid for ${ttlMinutes} mins)`);
-    console.log(`======================================================\n`);
-
-    // 1. Sync OTP record to Firebase Firestore in real-time
-    try {
-      await firebaseService.saveOtpSession(sessionData);
-    } catch (fbErr) {
-      console.warn('Firebase OTP sync notice:', fbErr.message);
-    }
-
-    // 2. Dispatch OTP via Email (Real-time live SMTP if configured, plus logged in store)
-    let emailResult = null;
+    // Do not activate the OTP until SMTP confirms it was accepted for delivery.
+    let emailResult;
     try {
       emailResult = await emailService.sendOtpEmail({
         email: cleanEmail,
@@ -139,37 +107,33 @@ class OtpService {
       });
     } catch (err) {
       console.error('⚠️ Failed to dispatch live OTP email:', err.message);
+      throw new Error(`Could not send the OTP email: ${err.message}`);
     }
 
-    // 3. Dispatch OTP via SMS / Mobile Notification
-    let notificationResult = null;
+    if (!emailResult || !emailResult.delivered) {
+      const deliveryError = emailResult && (emailResult.error || (emailResult.logEntry && emailResult.logEntry.error));
+      const authHelp = deliveryError && /5\.7\.[89]|invalid login|authentication/i.test(deliveryError)
+        ? ' For Gmail, use a Google App Password (requires 2-Step Verification), not your regular account password.'
+        : '';
+      const message = `Could not send the OTP email. Check SMTP_USER, SMTP_PASS, and SMTP settings.${authHelp}`;
+      console.error(`[OTP email delivery failed] ${deliveryError || 'SMTP is not configured.'}`);
+      throw new Error(message);
+    }
+
+    this.otpStore.set(cleanEmail, sessionData);
+
     try {
-      notificationResult = await notificationService.dispatchOtpNotification({
-        mobile: cleanMobile,
-        email: cleanEmail,
-        fullName: studentName,
-        otp
-      });
-    } catch (err) {
-      console.error('⚠️ Failed to dispatch SMS OTP notification:', err.message);
+      await firebaseService.saveOtpSession(sessionData);
+    } catch (fbErr) {
+      console.warn('Firebase OTP sync notice:', fbErr.message);
     }
-
-    const isLiveDelivery = emailResult ? emailResult.delivered : false;
 
     return {
       success: true,
-      message: isLiveDelivery
-        ? `Fresh OTP has been dispatched in real-time to your authentic email (${cleanEmail}) and mobile!`
-        : `Unique OTP sent to your email (${cleanEmail}) and mobile number.`,
+      message: `OTP sent to ${cleanEmail}. Please check your inbox and spam folder.`,
       email: cleanEmail,
-      mobile: cleanMobile,
       expiresInMinutes: ttlMinutes,
-      liveDelivery: isLiveDelivery,
       firebaseSynced: firebaseService.isConnected,
-      // Provide preview OTP in development for immediate verification
-      debugOtp: process.env.NODE_ENV === 'production' ? undefined : otp,
-      whatsappUrl: notificationResult ? notificationResult.whatsappUrl : '',
-      smsUrl: notificationResult ? notificationResult.smsUrl : '',
       gmailUrl: emailResult ? emailResult.gmailUrl : '',
       mailtoUrl: emailResult ? emailResult.mailtoUrl : ''
     };

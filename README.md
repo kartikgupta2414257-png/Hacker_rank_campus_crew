@@ -72,7 +72,7 @@ http://localhost:3000
 
 ---
 
-## 📧 Email Configuration (Optional Live SMTP)
+## 📧 Email Configuration (SMTP)
 
 By default, the server runs in **Simulated Outbox Mode** (logs every email to the persistent database and displays them in the Admin Dashboard Outbox table for verification).
 
@@ -82,12 +82,13 @@ To enable live transactional email delivery to real student inboxes, edit `.env`
 PORT=3000
 ADMIN_PASSWORD=amrapali2026
 
-# Gmail or SMTP Provider Settings:
+# Gmail or SMTP provider settings. For Gmail, use an App Password:
+# https://myaccount.google.com/apppasswords
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=au-250303050423@amrapali.ac.in
-SMTP_PASS=your_app_password
-SMTP_FROM=au-250303050423@amrapali.ac.in
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_gmail_app_password
+SMTP_FROM=your_email@gmail.com
 ```
 
 ---

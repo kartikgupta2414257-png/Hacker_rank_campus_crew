@@ -1,12 +1,5 @@
 const nodemailer = require('nodemailer');
 
-let sendEmail = null;
-try {
-  sendEmail = require('../sendEmail');
-} catch (e) {
-  sendEmail = null;
-}
-
 let store = null;
 try {
   store = require('../data/store');
@@ -21,26 +14,19 @@ class EmailService {
   }
 
   initTransporter() {
-    const host = process.env.SMTP_HOST;
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
-    const port = process.env.SMTP_PORT || 587;
+    const port = Number(process.env.SMTP_PORT || 587);
 
-    if (user && pass) {
+    if (user && pass && user !== 'your_email@gmail.com' && pass !== 'your_gmail_app_password') {
       try {
-        if (!host || host === 'smtp.gmail.com' || user.includes('@gmail.com') || user.includes('amrapali.ac.in')) {
-          this.transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user, pass }
-          });
-        } else {
-          this.transporter = nodemailer.createTransport({
-            host,
-            port: Number(port),
-            secure: Number(port) === 465,
-            auth: { user, pass }
-          });
-        }
+        this.transporter = nodemailer.createTransport({
+          host,
+          port,
+          secure: port === 465,
+          auth: { user, pass }
+        });
         console.log('✅ Live SMTP / Gmail Email Transport initialized for:', user);
       } catch (err) {
         console.error('⚠️ Failed to initialize SMTP transporter:', err.message);
@@ -60,45 +46,17 @@ class EmailService {
   }
 
   /**
-   * Universal internal dispatcher that sends via Resend API (sendEmail.js) or SMTP.
-   * Ensures OTP verification, registration emails, and status emails all work over Resend.
+   * Sends OTP, registration, and status emails through the configured SMTP server.
    */
   async deliverMail({ to, subject, html, text, fromName, fromEmail }) {
     let delivered = false;
     let provider = null;
-    let errorDetails = null;
+    let errorDetails = this.transporter ? null : 'SMTP_USER and SMTP_PASS must be configured.';
     let messageId = null;
 
-    // 1. Try Resend API via sendEmail.js utility (Thapa Technical pattern)
-    const apiKey = (process.env.RESEND_API_KEY || '').trim();
-    if (apiKey && apiKey !== 're_xxxxxxxxxxxxxxxxxxxxxxxx' && typeof sendEmail === 'function') {
+    if (this.transporter) {
       try {
-        const fromAddress = process.env.RESEND_FROM || (fromName ? `"${fromName}" <onboarding@resend.dev>` : 'HackerRank Campus Crew <onboarding@resend.dev>');
-        const resendRes = await sendEmail({
-          to,
-          subject,
-          html,
-          text,
-          from: fromAddress
-        });
-
-        if (resendRes.success) {
-          delivered = true;
-          provider = 'Resend API';
-          messageId = resendRes.data ? resendRes.data.id : null;
-        } else {
-          errorDetails = typeof resendRes.error === 'object' ? (resendRes.error.message || JSON.stringify(resendRes.error)) : resendRes.error;
-        }
-      } catch (err) {
-        console.error('⚠️ Resend delivery failed:', err.message);
-        errorDetails = err.message;
-      }
-    }
-
-    // 2. Try SMTP Transporter (Gmail / Custom SMTP) if not yet delivered
-    if (!delivered && this.transporter) {
-      try {
-        const smtpFrom = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@amrapali.ac.in';
+        const smtpFrom = fromEmail || process.env.SMTP_FROM || process.env.SMTP_USER;
         const info = await this.transporter.sendMail({
           from: `"${fromName || 'HackerRank Campus Crew AU'}" <${smtpFrom}>`,
           to,
@@ -107,7 +65,7 @@ class EmailService {
           html
         });
         delivered = true;
-        provider = 'SMTP (Live)';
+        provider = 'SMTP';
         messageId = info.messageId;
         console.log(`✉️ Live email successfully sent to ${to} via SMTP`);
       } catch (err) {
@@ -125,7 +83,7 @@ class EmailService {
   }
 
   /**
-   * Dispatches real-time OTP verification email to user's authentic inbox via Resend or SMTP
+   * Dispatches real-time OTP verification email through SMTP
    * @param {Object} param0 
    */
   async sendOtpEmail({ email, fullName, otp }) {
@@ -193,7 +151,6 @@ Email: au-250303050423@amrapali.ac.in / ap967143@gmail.com`;
       </div>
     `;
 
-    // Attempt live delivery via Resend or SMTP
     const delivery = await this.deliverMail({
       to: email,
       subject,
@@ -224,13 +181,14 @@ Email: au-250303050423@amrapali.ac.in / ap967143@gmail.com`;
       liveTransport: delivery.delivered,
       provider: delivery.provider,
       messageId: delivery.messageId,
+      error: delivery.errorDetails,
       gmailUrl,
       mailtoUrl
     };
   }
 
   /**
-   * Dispatches registration confirmation email via Resend or SMTP
+   * Dispatches registration confirmation email through SMTP
    */
   async sendCoordinatorRegistrationEmail(student) {
     const discordLink = "https://discord.gg/m6ZMnSunx";
@@ -349,7 +307,7 @@ Email: au-250303050423@amrapali.ac.in / ap967143@gmail.com`;
   }
 
   /**
-   * Dispatches status update notification email (Selected, Shortlisted, Rejected) via Resend or SMTP
+   * Dispatches status update notification email through SMTP
    */
   async sendStatusUpdateEmail(student, status, notes = '') {
     const discordLink = "https://discord.gg/m6ZMnSunx";
